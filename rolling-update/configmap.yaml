@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+data:
+  default.conf: |
+    server {
+        listen 80;
+        listen [::]:80;
+
+        keepalive_timeout 0;
+        keepalive_requests 1;
+
+        root /usr/share/nginx/html;
+        try_files /index.html =404;
+
+        expires -1;
+
+        sub_filter_once off;
+        sub_filter 'server_hostname' '$hostname';
+        sub_filter 'server_address' '$server_addr:$server_port';
+        sub_filter 'server_url' '$request_uri';
+        sub_filter 'server_date' '$time_local';
+        sub_filter 'request_id' '$request_id';
+    }

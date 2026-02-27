@@ -1,0 +1,1722 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kubernetes Deployment Demo Dashboard</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      header {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .status-bar {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        margin-top: 10px;
+      }
+
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .status-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      .status-dot.connected {
+        background: #10b981;
+      }
+
+      .status-dot.disconnected {
+        background: #ef4444;
+        animation: none;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .deployment-section {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .section-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #e5e7eb;
+      }
+
+      .section-title {
+        font-size: 1.5em;
+        color: #333;
+      }
+
+      .controls {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.3s;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      .btn-primary {
+        background: #3b82f6;
+        color: white;
+      }
+
+      .btn-success {
+        background: #10b981;
+        color: white;
+      }
+
+      .btn-warning {
+        background: #f59e0b;
+        color: white;
+      }
+
+      .btn-danger {
+        background: #ef4444;
+        color: white;
+      }
+
+      .btn-secondary {
+        background: #6b7280;
+        color: white;
+      }
+
+      .pods-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 15px;
+        margin-top: 15px;
+      }
+
+      .pod-card {
+        background: #f9fafb;
+        border: 2px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 15px;
+        transition: all 0.3s;
+      }
+
+      .pod-card.Running {
+        border-color: #10b981;
+        background: #f0fdf4;
+      }
+
+      .pod-card.Pending {
+        border-color: #f59e0b;
+        background: #fffbeb;
+      }
+
+      .pod-card.Terminating {
+        border-color: #ef4444;
+        background: #fef2f2;
+        opacity: 0.7;
+      }
+
+      .pod-card.ContainerCreating {
+        border-color: #3b82f6;
+        background: #eff6ff;
+      }
+
+      .pod-name {
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 8px;
+        font-size: 0.9em;
+        word-break: break-all;
+      }
+
+      .pod-status {
+        display: inline-block;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.8em;
+        font-weight: 600;
+        margin-bottom: 8px;
+      }
+
+      .pod-status.Running {
+        background: #10b981;
+        color: white;
+      }
+
+      .pod-status.Pending {
+        background: #f59e0b;
+        color: white;
+      }
+
+      .pod-status.Terminating {
+        background: #ef4444;
+        color: white;
+      }
+
+      .pod-status.ContainerCreating {
+        background: #3b82f6;
+        color: white;
+      }
+
+      .pod-labels {
+        font-size: 0.75em;
+        color: #6b7280;
+        margin-top: 5px;
+      }
+
+      .pod-label {
+        display: inline-block;
+        background: #e5e7eb;
+        padding: 2px 6px;
+        border-radius: 3px;
+        margin: 2px;
+      }
+
+      .no-pods {
+        text-align: center;
+        padding: 40px;
+        color: #6b7280;
+        font-style: italic;
+      }
+
+      .refresh-info {
+        text-align: right;
+        color: #6b7280;
+        font-size: 0.85em;
+        margin-top: 10px;
+      }
+
+      .instructions {
+        background: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+      }
+
+      .instructions h3 {
+        color: #92400e;
+        margin-bottom: 10px;
+      }
+
+      .instructions code {
+        background: #ffffff;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-family: "Courier New", monospace;
+      }
+
+      .config-section {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+
+      .config-form {
+        display: grid;
+        gap: 15px;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .form-group label {
+        font-weight: 600;
+        color: #333;
+      }
+
+      .form-group input {
+        padding: 10px;
+        border: 2px solid #e5e7eb;
+        border-radius: 5px;
+        font-size: 14px;
+      }
+
+      .form-group input:focus {
+        outline: none;
+        border-color: #3b82f6;
+      }
+
+      .form-actions {
+        display: flex;
+        gap: 10px;
+      }
+
+      .deployment-config {
+        background: #f9fafb;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        border: 1px solid #e5e7eb;
+      }
+
+      .config-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .config-field {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .config-field label {
+        font-size: 0.85em;
+        font-weight: 600;
+        color: #4b5563;
+      }
+
+      .config-field input {
+        padding: 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        font-size: 14px;
+      }
+
+      .config-field input:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+
+      .config-title {
+        font-weight: 600;
+        color: #374151;
+        margin-bottom: 5px;
+      }
+
+      .error-message {
+        background: #fef2f2;
+        border: 1px solid #ef4444;
+        color: #991b1b;
+        padding: 15px;
+        border-radius: 5px;
+        margin-bottom: 15px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Kubernetes Deployment Demo Dashboard</h1>
+        <div class="status-bar">
+          <div class="status-indicator">
+            <div class="status-dot" id="connectionStatus"></div>
+            <span id="connectionText">Connecting...</span>
+          </div>
+          <button onclick="refreshAll()" class="btn-secondary">
+            Refresh All
+          </button>
+        </div>
+      </header>
+
+      <div class="instructions">
+        <h3>Setup Required</h3>
+        <p>
+          <strong> Start kubectl proxy:</strong>
+          <code>kubectl proxy --port=8001</code> and in another terminal:
+          <code>python3 cors-proxy.py</code>
+        </p>
+      </div>
+
+      <div class="config-section">
+        <h3>API Configuration</h3>
+        <div class="config-form">
+          <div class="form-group">
+            <label for="apiUrl">Kubernetes API URL</label>
+            <input
+              type="text"
+              id="apiUrl"
+              placeholder="http://localhost:8002 or https://cluster-ip:6443"
+              value="http://localhost:8002"
+            />
+          </div>
+          <div class="form-group">
+            <label for="apiToken"
+              >Bearer Token (Optional - leave empty for kubectl proxy)</label
+            >
+            <input
+              type="password"
+              id="apiToken"
+              placeholder="Paste your service account token here"
+            />
+          </div>
+          <div class="form-actions">
+            <button onclick="saveConfig()" class="btn-primary">
+              Save Configuration
+            </button>
+            <button onclick="toggleTokenVisibility()" class="btn-secondary">
+              Show/Hide Token
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Rolling Update Section -->
+      <div class="deployment-section">
+        <div class="section-header">
+          <h2 class="section-title">🔄 Rolling Update Deployment</h2>
+          <div class="controls">
+            <button onclick="deployRolling()" class="btn-primary">
+              Deploy
+            </button>
+            <button onclick="updateRollingV2()" class="btn-success">
+              Update to V2
+            </button>
+            <button onclick="updateRollingV1()" class="btn-warning">
+              Rollback to V1
+            </button>
+            <button onclick="deleteRolling()" class="btn-danger">Delete</button>
+          </div>
+        </div>
+
+        <div class="deployment-config">
+          <div class="config-title">Configuration</div>
+          <div class="config-row">
+            <div class="config-field">
+              <label for="rolling-replicas">Replicas</label>
+              <input
+                type="number"
+                id="rolling-replicas"
+                value="3"
+                min="1"
+                max="20"
+              />
+            </div>
+            <div class="config-field">
+              <label for="rolling-maxSurge">Max Surge</label>
+              <input
+                type="number"
+                id="rolling-maxSurge"
+                value="1"
+                min="0"
+                max="10"
+              />
+            </div>
+            <div class="config-field">
+              <label for="rolling-maxUnavailable">Max Unavailable</label>
+              <input
+                type="number"
+                id="rolling-maxUnavailable"
+                value="1"
+                min="0"
+                max="10"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div id="rolling-error"></div>
+        <div id="rolling-service-url"></div>
+        <div id="rolling-pods" class="pods-grid"></div>
+        <div class="refresh-info" id="rolling-refresh"></div>
+      </div>
+
+      <!-- Canary Section -->
+      <div class="deployment-section">
+        <div class="section-header">
+          <h2 class="section-title">🐤 Canary Deployment</h2>
+          <div class="controls">
+            <button onclick="deployCanary()" class="btn-primary">Deploy</button>
+            <button onclick="promoteCanary()" class="btn-success">
+              Promote Canary
+            </button>
+            <button onclick="rollbackCanary()" class="btn-warning">
+              Rollback Canary
+            </button>
+            <button onclick="deleteCanary()" class="btn-danger">Delete</button>
+          </div>
+        </div>
+
+        <div class="deployment-config">
+          <div class="config-title">Configuration</div>
+          <div class="config-row">
+            <div class="config-field">
+              <label for="canary-stable-replicas">Stable Replicas</label>
+              <input
+                type="number"
+                id="canary-stable-replicas"
+                value="9"
+                min="0"
+                max="20"
+              />
+            </div>
+            <div class="config-field">
+              <label for="canary-new-replicas">Canary Replicas</label>
+              <input
+                type="number"
+                id="canary-new-replicas"
+                value="1"
+                min="0"
+                max="20"
+              />
+            </div>
+            <div class="config-field">
+              <label>Canary %</label>
+              <input
+                type="text"
+                id="canary-percentage"
+                readonly
+                style="background: #e5e7eb; cursor: not-allowed"
+                value="10%"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div id="canary-error"></div>
+        <div id="canary-service-url"></div>
+        <div id="canary-pods" class="pods-grid"></div>
+        <div class="refresh-info" id="canary-refresh"></div>
+      </div>
+
+      <!-- Blue-Green Section -->
+      <div class="deployment-section">
+        <div class="section-header">
+          <h2 class="section-title">🔵🟢 Blue-Green Deployment</h2>
+          <div class="controls">
+            <button onclick="deployBlueGreen()" class="btn-primary">
+              Deploy Both
+            </button>
+            <button onclick="switchToGreen()" class="btn-success">
+              Switch to Green
+            </button>
+            <button onclick="switchToBlue()" class="btn-warning">
+              Switch to Blue
+            </button>
+            <button onclick="deleteBlueGreen()" class="btn-danger">
+              Delete
+            </button>
+          </div>
+        </div>
+
+        <div class="deployment-config">
+          <div class="config-title">Configuration</div>
+          <div class="config-row">
+            <div class="config-field">
+              <label for="bluegreen-replicas"
+                >Replicas (Both Environments)</label
+              >
+              <input
+                type="number"
+                id="bluegreen-replicas"
+                value="3"
+                min="1"
+                max="20"
+              />
+            </div>
+          </div>
+        </div>
+
+        <div id="bluegreen-error"></div>
+        <div id="bluegreen-service-url"></div>
+        <div id="bluegreen-pods" class="pods-grid"></div>
+        <div class="refresh-info" id="bluegreen-refresh"></div>
+      </div>
+    </div>
+
+    <script>
+      let API_BASE = "http://localhost:8002";
+      let API_TOKEN = "";
+      let isConnected = false;
+      let refreshIntervals = {};
+
+      // Load configuration from localStorage
+      function loadConfig() {
+        const savedUrl = localStorage.getItem("apiUrl");
+        const savedToken = localStorage.getItem("apiToken");
+
+        if (savedUrl) {
+          API_BASE = savedUrl;
+          document.getElementById("apiUrl").value = savedUrl;
+        }
+        if (savedToken) {
+          API_TOKEN = savedToken;
+          document.getElementById("apiToken").value = savedToken;
+        }
+      }
+
+      // Save configuration to localStorage
+      function saveConfig() {
+        API_BASE = document.getElementById("apiUrl").value;
+        API_TOKEN = document.getElementById("apiToken").value;
+
+        localStorage.setItem("apiUrl", API_BASE);
+        localStorage.setItem("apiToken", API_TOKEN);
+
+        alert("Configuration saved! Checking connection...");
+        checkConnection();
+      }
+      const configMap = {
+        apiVersion: "v1",
+        kind: "ConfigMap",
+        metadata: { name: "nginx-config" },
+        data: {
+          "default.conf": `server {
+        listen 80;
+        listen [::]:80;
+
+        keepalive_timeout 0;
+        keepalive_requests 1;
+
+        root /usr/share/nginx/html;
+        try_files /index.html =404;
+
+        expires -1;
+
+        sub_filter_once off;
+        sub_filter 'server_hostname' '$hostname';
+        sub_filter 'server_address' '$server_addr:$server_port';
+        sub_filter 'server_url' '$request_uri';
+        sub_filter 'server_date' '$time_local';
+        sub_filter 'request_id' '$request_id';
+}`,
+        },
+      };
+
+      // Toggle token visibility
+      function toggleTokenVisibility() {
+        const tokenInput = document.getElementById("apiToken");
+        tokenInput.type = tokenInput.type === "password" ? "text" : "password";
+      }
+
+      // Get headers for API requests
+      function getHeaders() {
+        const headers = {
+          "Content-Type": "application/json",
+        };
+
+        if (API_TOKEN) {
+          headers["Authorization"] = `Bearer ${API_TOKEN}`;
+        }
+
+        return headers;
+      }
+
+      // Check API connectivity
+      async function checkConnection() {
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/v1/namespaces/default/pods`,
+            {
+              headers: getHeaders(),
+            },
+          );
+          if (response.ok) {
+            isConnected = true;
+            document.getElementById("connectionStatus").className =
+              "status-dot connected";
+            document.getElementById("connectionText").textContent =
+              "Connected to Kubernetes API";
+            return true;
+          }
+        } catch (error) {
+          isConnected = false;
+          document.getElementById("connectionStatus").className =
+            "status-dot disconnected";
+          document.getElementById("connectionText").textContent =
+            "Disconnected - Check API URL and Token";
+        }
+        return false;
+      }
+
+      // Helper function to make API requests
+      async function apiRequest(method, path, body = null) {
+        try {
+          const headers = getHeaders();
+
+          // For PATCH requests, use strategic merge patch content type
+          if (method === "PATCH") {
+            headers["Content-Type"] = "application/strategic-merge-patch+json";
+          }
+
+          const options = {
+            method: method,
+            headers: headers,
+          };
+
+          if (body) {
+            options.body = JSON.stringify(body);
+          }
+
+          const response = await fetch(`${API_BASE}${path}`, options);
+
+          if (!response.ok) {
+            const error = await response.text();
+            throw new Error(
+              `API request failed (${response.status}): ${error}`,
+            );
+          }
+
+          return await response.json();
+        } catch (error) {
+          console.error("API request error:", error);
+          alert(`Error: ${error.message}`);
+          throw error;
+        }
+      }
+
+      // Show loading message
+      function showLoading(message) {
+        console.log(`⏳ ${message}`);
+      }
+
+      // Show success message
+      function showSuccess(message) {
+        console.log(`✅ ${message}`);
+      }
+
+      // Fetch pods with specific labels
+      async function fetchPods(labelSelector) {
+        try {
+          const url = `${API_BASE}/api/v1/namespaces/default/pods?labelSelector=${encodeURIComponent(labelSelector)}`;
+          const response = await fetch(url, {
+            headers: getHeaders(),
+          });
+          if (!response.ok) throw new Error("Failed to fetch pods");
+          const data = await response.json();
+          return data.items;
+        } catch (error) {
+          console.error("Error fetching pods:", error);
+          return [];
+        }
+      }
+
+      // Display pods
+      function displayPods(pods, containerId, refreshId) {
+        const container = document.getElementById(containerId);
+        const refreshInfo = document.getElementById(refreshId);
+
+        if (pods.length === 0) {
+          container.innerHTML =
+            '<div class="no-pods">No pods found. Deploy to see pods appear here.</div>';
+          refreshInfo.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+          return;
+        }
+
+        container.innerHTML = pods
+          .map((pod) => {
+            const name = pod.metadata.name;
+            const status = pod.metadata.deletionTimestamp
+              ? "Terminating"
+              : pod.status.containerStatuses &&
+                  pod.status.containerStatuses[0]?.state?.running
+                ? "Running"
+                : pod.status.containerStatuses &&
+                    pod.status.containerStatuses[0]?.state?.waiting
+                  ? pod.status.containerStatuses[0].state.waiting.reason
+                  : "Pending";
+
+            const labels = pod.metadata.labels;
+            const labelHTML = Object.entries(labels)
+              .filter(
+                ([key]) =>
+                  !key.includes("kubernetes.io") &&
+                  !key.includes("pod-template"),
+              )
+              .map(
+                ([key, value]) =>
+                  `<span class="pod-label">${key}: ${value}</span>`,
+              )
+              .join("");
+
+            return `
+                    <div class="pod-card ${status}">
+                        <div class="pod-name">${name}</div>
+                        <div class="pod-status ${status}">${status}</div>
+                        <div class="pod-labels">${labelHTML}</div>
+                    </div>
+                `;
+          })
+          .join("");
+
+        refreshInfo.textContent = `Last updated: ${new Date().toLocaleTimeString()} | ${pods.length} pod(s)`;
+      }
+
+      // Rolling Update functions
+      async function deployRolling() {
+        showLoading("Deploying rolling update demo...");
+
+        // Get configuration values
+        const replicas = parseInt(
+          document.getElementById("rolling-replicas").value,
+        );
+        const maxSurge = parseInt(
+          document.getElementById("rolling-maxSurge").value,
+        );
+        const maxUnavailable = parseInt(
+          document.getElementById("rolling-maxUnavailable").value,
+        );
+
+        // Create ConfigMap for nginx config (disables keep-alive)
+
+        const deployment = {
+          apiVersion: "apps/v1",
+          kind: "Deployment",
+          metadata: {
+            name: "rolling-update-demo",
+            labels: { app: "rolling-demo" },
+          },
+          spec: {
+            replicas: replicas,
+            strategy: {
+              type: "RollingUpdate",
+              rollingUpdate: {
+                maxSurge: maxSurge,
+                maxUnavailable: maxUnavailable,
+              },
+            },
+            selector: { matchLabels: { app: "rolling-demo" } },
+            template: {
+              metadata: {
+                labels: { app: "rolling-demo", version: "v1" },
+              },
+              spec: {
+                containers: [
+                  {
+                    name: "nginx-hello",
+                    image: "nginxdemos/hello:latest",
+                    command: ["sh"],
+                    args: [
+                      "-c",
+                      "rm -rf /etc/nginx/conf.d/hello.conf && nginx -g 'daemon off'\\;",
+                    ],
+                    ports: [{ containerPort: 80, name: "http" }],
+                    env: [
+                      {
+                        name: "DEPLOYMENT_TYPE",
+                        value: "Rolling Update V1",
+                      },
+                    ],
+                    resources: {
+                      requests: { cpu: "100m", memory: "64Mi" },
+                      limits: { cpu: "200m", memory: "128Mi" },
+                    },
+                    volumeMounts: [
+                      {
+                        name: "nginx-config",
+                        mountPath: "/etc/nginx/conf.d/default.conf",
+                        subPath: "default.conf",
+                      },
+                    ],
+                  },
+                ],
+                volumes: [
+                  {
+                    name: "nginx-config",
+                    configMap: { name: "nginx-config" },
+                  },
+                ],
+              },
+            },
+          },
+        };
+
+        const service = {
+          apiVersion: "v1",
+          kind: "Service",
+          metadata: { name: "rolling-demo-service" },
+          spec: {
+            type: "NodePort",
+            selector: { app: "rolling-demo" },
+            ports: [
+              { port: 80, targetPort: 80, protocol: "TCP", name: "http" },
+            ],
+          },
+        };
+
+        try {
+          await apiRequest(
+            "POST",
+            "/api/v1/namespaces/default/configmaps",
+            configMap,
+          );
+          await apiRequest(
+            "POST",
+            "/apis/apps/v1/namespaces/default/deployments",
+            deployment,
+          );
+          await apiRequest(
+            "POST",
+            "/api/v1/namespaces/default/services",
+            service,
+          );
+          showSuccess("Rolling update deployment created!");
+          setTimeout(() => {
+            refreshRolling();
+            refreshServiceURLs();
+          }, 1000);
+        } catch (error) {
+          console.error("Deploy failed:", error);
+        }
+      }
+
+      async function updateRollingV2() {
+        showLoading("Updating to Version 2.0...");
+        try {
+          const patch = {
+            spec: {
+              template: {
+                metadata: {
+                  labels: { app: "rolling-demo", version: "v2" },
+                },
+                spec: {
+                  containers: [
+                    {
+                      name: "nginx-hello",
+                      env: [
+                        {
+                          name: "DEPLOYMENT_TYPE",
+                          value: "Rolling Update V2",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          };
+
+          await apiRequest(
+            "PATCH",
+            "/apis/apps/v1/namespaces/default/deployments/rolling-update-demo",
+            patch,
+          );
+          showSuccess("Updated to Version 2.0!");
+          setTimeout(() => refreshRolling(), 1000);
+        } catch (error) {
+          console.error("Update failed:", error);
+        }
+      }
+
+      async function updateRollingV1() {
+        showLoading("Rolling back to Version 1.0...");
+        try {
+          const patch = {
+            spec: {
+              template: {
+                metadata: {
+                  labels: { app: "rolling-demo", version: "v1" },
+                },
+                spec: {
+                  containers: [
+                    {
+                      name: "nginx-hello",
+                      env: [
+                        {
+                          name: "DEPLOYMENT_TYPE",
+                          value: "Rolling Update V1",
+                        },
+                      ],
+                    },
+                  ],
+                },
+              },
+            },
+          };
+
+          await apiRequest(
+            "PATCH",
+            "/apis/apps/v1/namespaces/default/deployments/rolling-update-demo",
+            patch,
+          );
+          showSuccess("Rolled back to Version 1.0!");
+          setTimeout(() => refreshRolling(), 1000);
+        } catch (error) {
+          console.error("Rollback failed:", error);
+        }
+      }
+
+      async function deleteRolling() {
+        if (!confirm("Delete rolling update deployment and service?")) return;
+
+        showLoading("Deleting rolling update resources...");
+        try {
+          await apiRequest(
+            "DELETE",
+            "/apis/apps/v1/namespaces/default/deployments/rolling-update-demo",
+          );
+          await apiRequest(
+            "DELETE",
+            "/api/v1/namespaces/default/services/rolling-demo-service",
+          );
+          await apiRequest(
+            "DELETE",
+            "/api/v1/namespaces/default/configmaps/nginx-config",
+          );
+          showSuccess("Rolling update resources deleted!");
+          setTimeout(() => refreshRolling(), 1000);
+        } catch (error) {
+          console.error("Delete failed:", error);
+        }
+      }
+
+      async function refreshRolling() {
+        const pods = await fetchPods("app=rolling-demo");
+        displayPods(pods, "rolling-pods", "rolling-refresh");
+      }
+
+      // Canary functions
+      async function deployCanary() {
+        showLoading("Deploying canary demo...");
+
+        // Get configuration values
+        const stableReplicas = parseInt(
+          document.getElementById("canary-stable-replicas").value,
+        );
+        const canaryReplicas = parseInt(
+          document.getElementById("canary-new-replicas").value,
+        );
+        updateCanaryPercentage();
+
+        // Create ConfigMap for nginx config (disables keep-alive)
+
+        const stableDeployment = {
+          apiVersion: "apps/v1",
+          kind: "Deployment",
+          metadata: {
+            name: "canary-stable",
+            labels: { app: "canary-demo" },
+          },
+          spec: {
+            replicas: stableReplicas,
+            selector: { matchLabels: { app: "canary-demo", track: "stable" } },
+            template: {
+              metadata: {
+                labels: { app: "canary-demo", track: "stable", version: "v1" },
+              },
+              spec: {
+                containers: [
+                  {
+                    name: "nginx-hello",
+                    image: "nginxdemos/hello:latest",
+                    command: ["sh"],
+                    args: [
+                      "-c",
+                      "rm -rf /etc/nginx/conf.d/hello.conf && nginx -g 'daemon off'\\;",
+                    ],
+                    ports: [{ containerPort: 80, name: "http" }],
+                    env: [
+                      {
+                        name: "DEPLOYMENT_TYPE",
+                        value: "Canary Stable",
+                      },
+                    ],
+                    resources: {
+                      requests: { cpu: "100m", memory: "64Mi" },
+                      limits: { cpu: "200m", memory: "128Mi" },
+                    },
+                    volumeMounts: [
+                      {
+                        name: "nginx-config",
+                        mountPath: "/etc/nginx/conf.d/default.conf",
+                        subPath: "default.conf",
+                      },
+                    ],
+                  },
+                ],
+                volumes: [
+                  {
+                    name: "nginx-config",
+                    configMap: { name: "nginx-config" },
+                  },
+                ],
+              },
+            },
+          },
+        };
+
+        const canaryDeployment = {
+          apiVersion: "apps/v1",
+          kind: "Deployment",
+          metadata: {
+            name: "canary-new",
+            labels: { app: "canary-demo" },
+          },
+          spec: {
+            replicas: canaryReplicas,
+            selector: { matchLabels: { app: "canary-demo", track: "canary" } },
+            template: {
+              metadata: {
+                labels: { app: "canary-demo", track: "canary", version: "v2" },
+              },
+              spec: {
+                containers: [
+                  {
+                    name: "nginx-hello",
+                    image: "nginxdemos/hello:latest",
+                    command: ["sh"],
+                    args: [
+                      "-c",
+                      "rm -rf /etc/nginx/conf.d/hello.conf && nginx -g 'daemon off'\\;",
+                    ],
+                    ports: [{ containerPort: 80, name: "http" }],
+                    env: [
+                      {
+                        name: "DEPLOYMENT_TYPE",
+                        value: "Canary New",
+                      },
+                    ],
+                    resources: {
+                      requests: { cpu: "100m", memory: "64Mi" },
+                      limits: { cpu: "200m", memory: "128Mi" },
+                    },
+                    volumeMounts: [
+                      {
+                        name: "nginx-config",
+                        mountPath: "/etc/nginx/conf.d/default.conf",
+                        subPath: "default.conf",
+                      },
+                    ],
+                  },
+                ],
+                volumes: [
+                  {
+                    name: "nginx-config",
+                    configMap: { name: "nginx-config" },
+                  },
+                ],
+              },
+            },
+          },
+        };
+
+        const service = {
+          apiVersion: "v1",
+          kind: "Service",
+          metadata: { name: "canary-demo-service" },
+          spec: {
+            type: "NodePort",
+            selector: { app: "canary-demo" },
+            ports: [
+              { port: 80, targetPort: 80, protocol: "TCP", name: "http" },
+            ],
+          },
+        };
+
+        try {
+          await apiRequest(
+            "POST",
+            "/api/v1/namespaces/default/configmaps",
+            configMap,
+          );
+          await apiRequest(
+            "POST",
+            "/apis/apps/v1/namespaces/default/deployments",
+            stableDeployment,
+          );
+          await apiRequest(
+            "POST",
+            "/apis/apps/v1/namespaces/default/deployments",
+            canaryDeployment,
+          );
+          await apiRequest(
+            "POST",
+            "/api/v1/namespaces/default/services",
+            service,
+          );
+          showSuccess(
+            `Canary deployment created (${stableReplicas} stable / ${canaryReplicas} canary)!`,
+          );
+          setTimeout(() => {
+            refreshCanary();
+            refreshServiceURLs();
+          }, 1000);
+        } catch (error) {
+          console.error("Deploy failed:", error);
+        }
+      }
+
+      async function promoteCanary() {
+        showLoading("Promoting canary...");
+        try {
+          // Swap the replica counts
+          const stableReplicas = parseInt(
+            document.getElementById("canary-stable-replicas").value,
+          );
+          const canaryReplicas = parseInt(
+            document.getElementById("canary-new-replicas").value,
+          );
+
+          // Swap them
+          document.getElementById("canary-stable-replicas").value =
+            canaryReplicas;
+          document.getElementById("canary-new-replicas").value = stableReplicas;
+          updateCanaryPercentage();
+
+          const scaleCanaryPatch = { spec: { replicas: stableReplicas } };
+          await apiRequest(
+            "PATCH",
+            "/apis/apps/v1/namespaces/default/deployments/canary-new",
+            scaleCanaryPatch,
+          );
+
+          const scaleStablePatch = { spec: { replicas: canaryReplicas } };
+          await apiRequest(
+            "PATCH",
+            "/apis/apps/v1/namespaces/default/deployments/canary-stable",
+            scaleStablePatch,
+          );
+
+          showSuccess("Canary promoted! Traffic distribution swapped");
+          setTimeout(() => refreshCanary(), 1000);
+        } catch (error) {
+          console.error("Promote failed:", error);
+        }
+      }
+
+      async function rollbackCanary() {
+        showLoading("Rolling back canary...");
+        try {
+          // Swap back
+          const stableReplicas = parseInt(
+            document.getElementById("canary-stable-replicas").value,
+          );
+          const canaryReplicas = parseInt(
+            document.getElementById("canary-new-replicas").value,
+          );
+
+          document.getElementById("canary-stable-replicas").value =
+            canaryReplicas;
+          document.getElementById("canary-new-replicas").value = stableReplicas;
+          updateCanaryPercentage();
+
+          const scaleStablePatch = { spec: { replicas: canaryReplicas } };
+          await apiRequest(
+            "PATCH",
+            "/apis/apps/v1/namespaces/default/deployments/canary-stable",
+            scaleStablePatch,
+          );
+
+          const scaleCanaryPatch = { spec: { replicas: stableReplicas } };
+          await apiRequest(
+            "PATCH",
+            "/apis/apps/v1/namespaces/default/deployments/canary-new",
+            scaleCanaryPatch,
+          );
+
+          showSuccess("Canary rolled back! Traffic distribution restored");
+          setTimeout(() => refreshCanary(), 1000);
+        } catch (error) {
+          console.error("Rollback failed:", error);
+        }
+      }
+
+      async function deleteCanary() {
+        if (!confirm("Delete canary deployments and service?")) return;
+
+        showLoading("Deleting canary resources...");
+        try {
+          await apiRequest(
+            "DELETE",
+            "/apis/apps/v1/namespaces/default/deployments/canary-stable",
+          );
+          await apiRequest(
+            "DELETE",
+            "/apis/apps/v1/namespaces/default/deployments/canary-new",
+          );
+          await apiRequest(
+            "DELETE",
+            "/api/v1/namespaces/default/services/canary-demo-service",
+          );
+          await apiRequest(
+            "DELETE",
+            "/api/v1/namespaces/default/configmaps/nginx-config",
+          );
+          showSuccess("Canary resources deleted!");
+          setTimeout(() => refreshCanary(), 1000);
+        } catch (error) {
+          console.error("Delete failed:", error);
+        }
+      }
+
+      async function refreshCanary() {
+        const pods = await fetchPods("app=canary-demo");
+        displayPods(pods, "canary-pods", "canary-refresh");
+      }
+
+      // Blue-Green functions
+      async function deployBlueGreen() {
+        showLoading("Deploying blue-green demo...");
+
+        // Get configuration values
+        const replicas = parseInt(
+          document.getElementById("bluegreen-replicas").value,
+        );
+
+        const blueDeployment = {
+          apiVersion: "apps/v1",
+          kind: "Deployment",
+          metadata: {
+            name: "bluegreen-blue",
+            labels: { app: "bluegreen-demo" },
+          },
+          spec: {
+            replicas: replicas,
+            selector: {
+              matchLabels: { app: "bluegreen-demo", environment: "blue" },
+            },
+            template: {
+              metadata: {
+                labels: {
+                  app: "bluegreen-demo",
+                  environment: "blue",
+                  version: "v1",
+                },
+              },
+              spec: {
+                containers: [
+                  {
+                    name: "nginx-hello",
+                    image: "nginxdemos/hello:latest",
+                    command: ["sh"],
+                    args: [
+                      "-c",
+                      "rm -rf /etc/nginx/conf.d/hello.conf && nginx -g 'daemon off'\\;",
+                    ],
+                    ports: [{ containerPort: 80, name: "http" }],
+                    env: [
+                      {
+                        name: "DEPLOYMENT_TYPE",
+                        value: "Blue Environment",
+                      },
+                    ],
+                    resources: {
+                      requests: { cpu: "100m", memory: "64Mi" },
+                      limits: { cpu: "200m", memory: "128Mi" },
+                    },
+                    volumeMounts: [
+                      {
+                        name: "nginx-config",
+                        mountPath: "/etc/nginx/conf.d/default.conf",
+                        subPath: "default.conf",
+                      },
+                    ],
+                  },
+                ],
+                volumes: [
+                  {
+                    name: "nginx-config",
+                    configMap: { name: "nginx-config" },
+                  },
+                ],
+              },
+            },
+          },
+        };
+
+        const greenDeployment = {
+          apiVersion: "apps/v1",
+          kind: "Deployment",
+          metadata: {
+            name: "bluegreen-green",
+            labels: { app: "bluegreen-demo" },
+          },
+          spec: {
+            replicas: replicas,
+            selector: {
+              matchLabels: { app: "bluegreen-demo", environment: "green" },
+            },
+            template: {
+              metadata: {
+                labels: {
+                  app: "bluegreen-demo",
+                  environment: "green",
+                  version: "v2",
+                },
+              },
+              spec: {
+                containers: [
+                  {
+                    name: "nginx-hello",
+                    image: "nginxdemos/hello:latest",
+                    command: ["sh"],
+                    args: [
+                      "-c",
+                      "rm -rf /etc/nginx/conf.d/hello.conf && nginx -g 'daemon off'\\;",
+                    ],
+                    ports: [{ containerPort: 80, name: "http" }],
+                    env: [
+                      {
+                        name: "DEPLOYMENT_TYPE",
+                        value: "Green Environment",
+                      },
+                    ],
+                    resources: {
+                      requests: { cpu: "100m", memory: "64Mi" },
+                      limits: { cpu: "200m", memory: "128Mi" },
+                    },
+                    volumeMounts: [
+                      {
+                        name: "nginx-config",
+                        mountPath: "/etc/nginx/conf.d/default.conf",
+                        subPath: "default.conf",
+                      },
+                    ],
+                  },
+                ],
+                volumes: [
+                  {
+                    name: "nginx-config",
+                    configMap: { name: "nginx-config" },
+                  },
+                ],
+              },
+            },
+          },
+        };
+
+        const service = {
+          apiVersion: "v1",
+          kind: "Service",
+          metadata: { name: "bluegreen-demo-service" },
+          spec: {
+            type: "NodePort",
+            selector: { app: "bluegreen-demo", environment: "blue" },
+            ports: [
+              { port: 80, targetPort: 80, protocol: "TCP", name: "http" },
+            ],
+          },
+        };
+
+        try {
+          await apiRequest(
+            "POST",
+            "/api/v1/namespaces/default/configmaps",
+            configMap,
+          );
+          await apiRequest(
+            "POST",
+            "/apis/apps/v1/namespaces/default/deployments",
+            blueDeployment,
+          );
+          await apiRequest(
+            "POST",
+            "/apis/apps/v1/namespaces/default/deployments",
+            greenDeployment,
+          );
+          await apiRequest(
+            "POST",
+            "/api/v1/namespaces/default/services",
+            service,
+          );
+          showSuccess(
+            `Blue-green deployment created (${replicas} replicas per environment, traffic on BLUE)!`,
+          );
+          setTimeout(() => {
+            refreshBlueGreen();
+            refreshServiceURLs();
+          }, 1000);
+        } catch (error) {
+          console.error("Deploy failed:", error);
+        }
+      }
+
+      async function switchToGreen() {
+        showLoading("Switching traffic to GREEN environment...");
+        try {
+          const patch = {
+            spec: {
+              selector: {
+                app: "bluegreen-demo",
+                environment: "green",
+              },
+            },
+          };
+
+          await apiRequest(
+            "PATCH",
+            "/api/v1/namespaces/default/services/bluegreen-demo-service",
+            patch,
+          );
+          showSuccess("Traffic switched to GREEN!");
+          setTimeout(() => refreshBlueGreen(), 1000);
+        } catch (error) {
+          console.error("Switch failed:", error);
+        }
+      }
+
+      async function switchToBlue() {
+        showLoading("Switching traffic to BLUE environment...");
+        try {
+          const patch = {
+            spec: {
+              selector: {
+                app: "bluegreen-demo",
+                environment: "blue",
+              },
+            },
+          };
+
+          await apiRequest(
+            "PATCH",
+            "/api/v1/namespaces/default/services/bluegreen-demo-service",
+            patch,
+          );
+          showSuccess("Traffic switched to BLUE!");
+          setTimeout(() => refreshBlueGreen(), 1000);
+        } catch (error) {
+          console.error("Switch failed:", error);
+        }
+      }
+
+      async function deleteBlueGreen() {
+        if (!confirm("Delete blue-green deployments and service?")) return;
+
+        showLoading("Deleting blue-green resources...");
+        try {
+          await apiRequest(
+            "DELETE",
+            "/apis/apps/v1/namespaces/default/deployments/bluegreen-blue",
+          );
+          await apiRequest(
+            "DELETE",
+            "/apis/apps/v1/namespaces/default/deployments/bluegreen-green",
+          );
+          await apiRequest(
+            "DELETE",
+            "/api/v1/namespaces/default/services/bluegreen-demo-service",
+          );
+          await apiRequest(
+            "DELETE",
+            "/api/v1/namespaces/default/configmaps/nginx-config",
+          );
+          showSuccess("Blue-green resources deleted!");
+          setTimeout(() => refreshBlueGreen(), 1000);
+        } catch (error) {
+          console.error("Delete failed:", error);
+        }
+      }
+
+      async function refreshBlueGreen() {
+        const pods = await fetchPods("app=bluegreen-demo");
+        displayPods(pods, "bluegreen-pods", "bluegreen-refresh");
+      }
+
+      // Refresh all sections
+      function refreshAll() {
+        refreshRolling();
+        refreshCanary();
+        refreshBlueGreen();
+      }
+
+      // Update canary percentage display
+      function updateCanaryPercentage() {
+        const stableReplicas =
+          parseInt(document.getElementById("canary-stable-replicas").value) ||
+          0;
+        const canaryReplicas =
+          parseInt(document.getElementById("canary-new-replicas").value) || 0;
+        const total = stableReplicas + canaryReplicas;
+
+        if (total === 0) {
+          document.getElementById("canary-percentage").value = "0%";
+        } else {
+          const percentage = Math.round((canaryReplicas / total) * 100);
+          document.getElementById("canary-percentage").value = `${percentage}%`;
+        }
+      }
+
+      // Fetch service information
+      async function fetchService(serviceName) {
+        try {
+          const response = await fetch(
+            `${API_BASE}/api/v1/namespaces/default/services/${serviceName}`,
+            {
+              headers: getHeaders(),
+            },
+          );
+          if (!response.ok) return null;
+          return await response.json();
+        } catch (error) {
+          console.error("Error fetching service:", error);
+          return null;
+        }
+      }
+
+      // Display service URL
+      async function displayServiceURL(serviceName, containerId) {
+        const service = await fetchService(serviceName);
+        const container = document.getElementById(containerId);
+
+        if (!service) {
+          container.innerHTML =
+            '<div style="padding: 10px; background: #fef2f2; border-radius: 5px; color: #991b1b;">Service not found</div>';
+          return;
+        }
+
+        let urlHTML =
+          '<div style="padding: 10px; background: #f0f9ff; border-radius: 5px; margin-top: 10px;">';
+        urlHTML += '<strong style="color: #1e40af;">Service Access:</strong> ';
+
+        // For NodePort services, show minikube command
+        if (service.spec.type === "NodePort") {
+          const nodePort = service.spec.ports[0].nodePort;
+
+          urlHTML += `<div style="margin-top: 8px;">`;
+          urlHTML += `<div style="margin-bottom: 8px;">NodePort: <code style="background: #e5e7eb; padding: 2px 6px; border-radius: 3px;">${nodePort}</code></div>`;
+          urlHTML += `<div style="margin-bottom: 8px;">For Minikube, run:</div>`;
+
+          const minikubeCmd = `minikube service ${serviceName} --url`;
+          urlHTML += `<div style="background: #1f2937; color: #f3f4f6; padding: 8px; border-radius: 4px; font-family: monospace; font-size: 0.9em; display: flex; justify-content: space-between; align-items: center;">`;
+          urlHTML += `<span>${minikubeCmd}</span>`;
+          urlHTML += ` <button onclick="navigator.clipboard.writeText('${minikubeCmd}')" style="padding: 4px 10px; cursor: pointer; border: 1px solid #3b82f6; background: #3b82f6; color: white; border-radius: 3px; font-size: 0.85em;">Copy</button>`;
+          urlHTML += `</div>`;
+          urlHTML += `</div>`;
+        }
+        // For LoadBalancer, show external IP if available
+        else if (service.spec.type === "LoadBalancer") {
+          const status = service.status;
+          if (
+            status.loadBalancer &&
+            status.loadBalancer.ingress &&
+            status.loadBalancer.ingress.length > 0
+          ) {
+            const ingress = status.loadBalancer.ingress[0];
+            const ip = ingress.ip || ingress.hostname;
+            const port = service.spec.ports[0].port;
+            const url = `http://${ip}:${port}`;
+
+            urlHTML += `<a href="${url}" target="_blank" style="color: #2563eb; text-decoration: underline;">${url}</a>`;
+            urlHTML += ` <button onclick="navigator.clipboard.writeText('${url}')" style="padding: 2px 8px; margin-left: 10px; cursor: pointer; border: 1px solid #2563eb; background: white; border-radius: 3px; color: #2563eb;">Copy</button>`;
+          } else {
+            urlHTML +=
+              '<span style="color: #d97706;">LoadBalancer IP pending...</span>';
+          }
+        }
+
+        urlHTML += "</div>";
+        container.innerHTML = urlHTML;
+      }
+
+      // Refresh service URLs
+      async function refreshServiceURLs() {
+        if (!isConnected) return;
+
+        // Check if services exist before trying to display URLs
+        const rollingService = await fetchService("rolling-demo-service");
+        if (rollingService) {
+          displayServiceURL("rolling-demo-service", "rolling-service-url");
+        }
+
+        const canaryService = await fetchService("canary-demo-service");
+        if (canaryService) {
+          displayServiceURL("canary-demo-service", "canary-service-url");
+        }
+
+        const bluegreenService = await fetchService("bluegreen-demo-service");
+        if (bluegreenService) {
+          displayServiceURL("bluegreen-demo-service", "bluegreen-service-url");
+        }
+      }
+
+      // Auto-refresh every 2 seconds
+      function startAutoRefresh() {
+        setInterval(() => {
+          if (isConnected) {
+            refreshAll();
+            refreshServiceURLs();
+          }
+        }, 2000);
+      }
+
+      // Initialize
+      async function initialize() {
+        loadConfig();
+        await checkConnection();
+        if (isConnected) {
+          refreshAll();
+          refreshServiceURLs();
+          startAutoRefresh();
+        }
+        // Keep checking connection
+        setInterval(checkConnection, 5000);
+
+        // Add event listeners for canary inputs to update percentage
+        document
+          .getElementById("canary-stable-replicas")
+          .addEventListener("input", updateCanaryPercentage);
+        document
+          .getElementById("canary-new-replicas")
+          .addEventListener("input", updateCanaryPercentage);
+
+        // Initialize canary percentage
+        updateCanaryPercentage();
+      }
+
+      // Start when page loads
+      window.addEventListener("load", initialize);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rolling-update-demo
+  labels:
+    app: rolling-demo
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1 # Maximum number of pods that can be created over the desired number
+      maxUnavailable: 1 # Maximum number of pods that can be unavailable during the update
+  selector:
+    matchLabels:
+      app: rolling-demo
+  template:
+    metadata:
+      labels:
+        app: rolling-demo
+        version: v1
+    spec:
+      containers:
+      - name: nginx-hello
+        image: nginxdemos/hello:latest
+        command:
+        - sh
+        args:
+        - -c
+        - rm -rf /etc/nginx/conf.d/hello.conf && nginx -g 'daemon off'\;
+        ports:
+        - containerPort: 80
+          name: http
+        env:
+        - name: DEPLOYMENT_TYPE
+          value: "Rolling Update V1"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d/default.conf
+          subPath: default.conf
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config
