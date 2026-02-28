@@ -6,6 +6,8 @@ See this drawing for more info: [Excalidraw](https://excalidraw.com/#json=IFSo0h
 
 ![Dashboard](./dashboard-image.png)
 
+Youtube Video (Arabic): [https://www.youtube.com/watch?v=yYxxVzjvcms](https://www.youtube.com/watch?v=yYxxVzjvcms)
+
 ## Prerequisites
 
 - Minikube or any Kubernetes cluster running
