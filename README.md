@@ -1,10 +1,10 @@
 # Kubernetes Deployment Dashboard
 
+![Dashboard](./dashboard-image.png)
+
 Demonstration for three types of software deployment methods: Rolling Updates, Canary, Blue/Green.
 
 See this drawing for more info: [Excalidraw](https://excalidraw.com/#json=IFSo0h9d64vxWMyOo_ztN,ENr1Mtx_44kgoXKHc5befw)
-
-![Dashboard](./dashboard-image.png)
 
 Youtube Video (Arabic): [https://www.youtube.com/watch?v=yYxxVzjvcms](https://www.youtube.com/watch?v=yYxxVzjvcms)
 
